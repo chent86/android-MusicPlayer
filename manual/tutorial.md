@@ -128,3 +128,13 @@ seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 ```
 ### 6. 参考文件目录
 ![preview](https://gitee.com/code_sysu/PersonalProject4/raw/master/manual/images/catalog.png)
+
+### 7. CircleImageView
+[参考](https://github.com/hdodenhof/CircleImageView)
+
+### 8. 使用手机自带的资源管理器选歌
+和上一次作业中使用图库选图大同小异
+[参考](https://blog.csdn.net/qq_38552744/article/details/78713381)
+
+### 9. 解析MP3文件中的歌曲信息
+[参考](https://www.jianshu.com/p/e38178f008ab)
