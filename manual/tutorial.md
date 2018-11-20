@@ -21,7 +21,7 @@
 | release() | 停止播放并释放资源 | 任何时候 |
 
 ### 2. 向虚拟机添加文件
-首先打开Android Device Monitor，如下图： 
+打开Android Device Monitor向虚拟机添加文件，demo的默认歌曲路径是：/data/山高水长.mp3
 使用自己手机进行调试的同学，注意把文件拷到内置SD卡而不是外置SD卡会比较方便。要使用外置的SD卡时，注意下文件路径的获取。相关的路径获取方法看[这里](http://blog.sina.com.cn/s/blog_5da93c8f0102vcam.html)
 
 ### 3. 使用MediaPlayer
