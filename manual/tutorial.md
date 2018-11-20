@@ -127,3 +127,4 @@ seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 })
 ```
 ### 6. 参考文件目录
+![preview](https://gitee.com/code_sysu/PersonalProject4/raw/master/manual/images/catalog.png)
