@@ -28,7 +28,7 @@
 创建对象并初始化（注意文件的路径）：
 ```java
 try {
-	mediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/data/K.Will-Melt.mp3");
+	mediaPlayer.setDataSource(Environment.getExternalStorageDirectory() + "/data/山高水长.mp3");
 	mediaPlayer.prepare();
 	...
 } catch (IOException e) {
