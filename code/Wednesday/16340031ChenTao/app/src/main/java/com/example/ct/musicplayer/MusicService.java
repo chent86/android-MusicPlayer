@@ -7,6 +7,7 @@ import android.content.res.AssetManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,6 +17,7 @@ import java.io.OutputStream;
 
 public class MusicService extends Service{
     MediaPlayer mediaPlayer;
+    public String path = "";
     public final IBinder binder = new MyBinder();
     public class MyBinder extends Binder {
         MusicService getService() {
@@ -23,7 +25,8 @@ public class MusicService extends Service{
         }
     }
     @Override
-    public IBinder onBind(Intent intent) {
+    public void onCreate() {
+        super.onCreate();
         mediaPlayer = new MediaPlayer();
         try{
 //            mediaPlayer.setDataSource(CopyMusic("山高水长.mp3"));
@@ -35,6 +38,10 @@ public class MusicService extends Service{
         } catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
         return binder;  // 需要返回binder
     }
 

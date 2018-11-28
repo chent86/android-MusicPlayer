@@ -3,6 +3,7 @@ package com.example.ct.musicplayer;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.Context;
@@ -24,6 +25,7 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
@@ -41,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     MusicService ms;
@@ -51,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
     boolean start = false;
     ObjectAnimator animator;
     String path;
+    Intent intent;
+    boolean update=true;
     private ServiceConnection sc = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -63,14 +68,50 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+    public static boolean isServiceRunning(Context context,String serviceName) {
+        // 校验服务是否还存在
+        ActivityManager am = (ActivityManager) context
+                .getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(100);
+        for (ActivityManager.RunningServiceInfo info : services) {
+            // 得到所有正在运行的服务的名称
+            String name = info.service.getClassName();
+            System.out.println(info.service.getClassName());
+            if (serviceName.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final Intent intent = new Intent(this, MusicService.class);
-        bindService(intent, sc, BIND_AUTO_CREATE);
+        //  rotateAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        // 类似的RotateAnimation不方便控制动画的暂停（停在某个角度）
+        CircleImageView img = findViewById(R.id.musicImg);
+        animator = ObjectAnimator.ofFloat(img, "rotation", 0f, 360f);
+        animator.setDuration(8000);
+        animator.setInterpolator(new LinearInterpolator());
+        animator.setRepeatCount(-1);
 
+        intent = new Intent(this, MusicService.class);
+        if(!isServiceRunning(this, "com.example.ct.musicplayer.MusicService")) {
+            startService(intent);
+            bindService(intent, sc, 0);
+        }
+        else{
+            bindService(intent, sc, 0);
+            animator.start();
+            start = true;
+            has_started = true;
+            ImageButton ib = findViewById(R.id.play);
+            ib.setBackgroundResource(R.drawable.pause);
+            update = false;
+        }
         final SeekBar seekBar = findViewById(R.id.progress);
         final TextView end = findViewById(R.id.end);
         final TextView current = findViewById(R.id.start);
@@ -80,6 +121,21 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 mHandler.postDelayed(mRunnable, 1000);
                 if (ms != null) {
+                    if(!update && !ms.path.equals("")) {
+                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                        mmr.setDataSource(ms.path);
+                        String title =  mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                        String author = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                        byte[] d = mmr.getEmbeddedPicture();
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(d, 0, d.length);
+                        TextView title_text = findViewById(R.id.title);
+                        TextView author_text = findViewById(R.id.author);
+                        CircleImageView music_img = findViewById(R.id.musicImg);
+                        title_text.setText(title);
+                        author_text.setText(author);
+                        music_img.setImageBitmap(bitmap);
+                        update = true;
+                    }
                     seekBar.setMax(ms.mediaPlayer.getDuration());
                     seekBar.setProgress(ms.mediaPlayer.getCurrentPosition());
                     current.setText(time.format(ms.mediaPlayer.getCurrentPosition()));
@@ -114,14 +170,6 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
-
-        //  rotateAnimation = new RotateAnimation(0, 360, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
-        // 类似的RotateAnimation不方便控制动画的暂停（停在某个角度）
-        CircleImageView img = findViewById(R.id.musicImg);
-        animator = ObjectAnimator.ofFloat(img, "rotation", 0f, 360f);
-        animator.setDuration(8000);
-        animator.setInterpolator(new LinearInterpolator());
-        animator.setRepeatCount(-1);
     }
 
     public void stop(View view) {    // 结束播放
@@ -160,6 +208,7 @@ public class MainActivity extends AppCompatActivity {
         unbindService(sc);
         try {
             MainActivity.this.finish();
+            stopService(intent); //  停止Service
             System.exit(0);
         } catch (Exception e) {
             e.printStackTrace();
@@ -203,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
             music_img.setImageBitmap(bitmap);
             ms.change_source(path);
             has_started = false;
+            ms.path = path;
         }
     }
 
