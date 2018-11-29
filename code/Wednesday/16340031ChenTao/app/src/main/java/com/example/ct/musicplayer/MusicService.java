@@ -29,11 +29,13 @@ public class MusicService extends Service{
         super.onCreate();
         mediaPlayer = new MediaPlayer();
         try{
-//            mediaPlayer.setDataSource(CopyMusic("山高水长.mp3"));
-            AssetManager am = this.getAssets();
-            AssetFileDescriptor afd = am.openFd("山高水长.mp3");  // 直接读取assets中的文件
-            mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(),afd.getLength());
-            mediaPlayer.prepare();
+            path = CopyMusic("山高水长.mp3");
+            mediaPlayer.setDataSource(path);
+            mediaPlayer.prepare();  // 没有prepare会报wrong state错误
+//            AssetManager am = this.getAssets();
+//            AssetFileDescriptor afd = am.openFd("山高水长.mp3");  // 直接读取assets中的文件
+//            mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(),afd.getLength());
+//            mediaPlayer.prepare();
 
         } catch(IOException e) {
             e.printStackTrace();
@@ -76,7 +78,7 @@ public class MusicService extends Service{
     }
 
     public String  CopyMusic(String MusicName) throws IOException {  // 将assets目录下的文件拷贝到SD卡中
-        File dir = new File("data/data/com.example.ct.musicplayer/"+MusicName);
+        File dir = new File("data/data/com.example.ct.musicplayer/Song");
         if (!dir.exists() || !dir.isDirectory()) {
             dir.mkdir();
         }

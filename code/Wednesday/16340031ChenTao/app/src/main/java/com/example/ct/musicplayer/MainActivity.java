@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     ObjectAnimator animator;
     String path;
     Intent intent;
-    boolean update=true;
+    boolean update=false;
     private ServiceConnection sc = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -105,11 +105,6 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
             bindService(intent, sc, 0);
-            animator.start();
-            start = true;
-            has_started = true;
-            ImageButton ib = findViewById(R.id.play);
-            ib.setBackgroundResource(R.drawable.pause);
             update = false;
         }
         final SeekBar seekBar = findViewById(R.id.progress);
@@ -122,6 +117,13 @@ public class MainActivity extends AppCompatActivity {
                 mHandler.postDelayed(mRunnable, 1000);
                 if (ms != null) {
                     if(!update && !ms.path.equals("")) {
+                        if(ms.mediaPlayer.isPlaying() && !update) {
+                            animator.start();
+                            start = true;
+                            has_started = true;
+                            ImageButton ib = findViewById(R.id.play);
+                            ib.setBackgroundResource(R.drawable.pause);
+                        }
                         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                         mmr.setDataSource(ms.path);
                         String title =  mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
