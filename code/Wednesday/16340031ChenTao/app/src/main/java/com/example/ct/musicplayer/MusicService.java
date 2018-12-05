@@ -6,7 +6,10 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Parcel;
+import android.os.RemoteException;
 import android.util.Log;
 
 import java.io.File;
@@ -14,14 +17,44 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import rx.Observable;
+import rx.Subscriber;
 
 public class MusicService extends Service{
     MediaPlayer mediaPlayer;
     public String path = "";
     public final IBinder binder = new MyBinder();
     public class MyBinder extends Binder {
-        MusicService getService() {
-            return MusicService.this;
+        protected boolean onTransact(int code, Parcel data, Parcel reply,
+                                     int flags) throws RemoteException {
+            if(code == 0) {
+                reply.writeString(MusicService.this.path);
+            } else if(code == 1) {
+                if(MusicService.this.mediaPlayer.isPlaying()) {
+                    reply.writeInt(1);
+                } else {
+                    reply.writeInt(0);
+                }
+            } else if(code == 2) {
+                reply.writeInt(MusicService.this.mediaPlayer.getDuration());
+            } else if(code == 3) {
+                reply.writeInt(MusicService.this.mediaPlayer.getCurrentPosition());
+            } else if(code == 4) {
+                MusicService.this.mediaPlayer.seekTo(data.readInt());
+            } else if(code == 5) {
+                MusicService.this.start();
+            } else if(code == 6) {
+                String s = data.readString();  // 只能读一次
+                MusicService.this.change_source(s);
+                MusicService.this.path = s;
+            } else if(code == 7) {
+                MusicService.this.mediaPlayer.seekTo(0);
+                MusicService.this.mediaPlayer.pause();
+            }
+            return super.onTransact(code, data, reply, flags);
         }
     }
     @Override

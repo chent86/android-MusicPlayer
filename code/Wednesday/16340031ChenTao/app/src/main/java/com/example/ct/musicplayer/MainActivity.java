@@ -14,6 +14,7 @@ import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -21,6 +22,8 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Parcel;
+import android.os.RemoteException;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -44,6 +47,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import rx.Observable;
+import rx.Observer;
+import rx.Scheduler;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
     MusicService ms;
@@ -56,10 +68,14 @@ public class MainActivity extends AppCompatActivity {
     String path;
     Intent intent;
     boolean update=false;
+    Observable observable;
+    Subscriber<String> subscriber;
+    IBinder binder;
     private ServiceConnection sc = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            ms = ((MusicService.MyBinder) service).getService();
+//            ms = ((MusicService.MyBinder) service).getService();
+            binder = service;
         }
 
         @Override
@@ -107,17 +123,17 @@ public class MainActivity extends AppCompatActivity {
             bindService(intent, sc, 0);
             update = false;
         }
+
         final SeekBar seekBar = findViewById(R.id.progress);
         final TextView end = findViewById(R.id.end);
         final TextView current = findViewById(R.id.start);
-        mHandler = new Handler();
-        mRunnable = new Runnable() {
+
+        subscriber = new Subscriber<String>() {
             @Override
-            public void run() {
-                mHandler.postDelayed(mRunnable, 1000);
-                if (ms != null) {
-                    if(!update && !ms.path.equals("")) {
-                        if(ms.mediaPlayer.isPlaying() && !update) {
+            public void onNext(String s) {
+                if (binder != null) {
+                    if(!update && !get_from_binder(0).readString().equals("")) {
+                        if(get_from_binder(1).readInt()==1 && !update) {
                             animator.start();
                             start = true;
                             has_started = true;
@@ -125,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
                             ib.setBackgroundResource(R.drawable.pause);
                         }
                         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                        mmr.setDataSource(ms.path);
+                        mmr.setDataSource(get_from_binder(0).readString());
                         String title =  mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
                         String author = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
                         byte[] d = mmr.getEmbeddedPicture();
@@ -138,11 +154,11 @@ public class MainActivity extends AppCompatActivity {
                         music_img.setImageBitmap(bitmap);
                         update = true;
                     }
-                    seekBar.setMax(ms.mediaPlayer.getDuration());
-                    seekBar.setProgress(ms.mediaPlayer.getCurrentPosition());
-                    current.setText(time.format(ms.mediaPlayer.getCurrentPosition()));
-                    end.setText(time.format(ms.mediaPlayer.getDuration()));
-                    if(ms.mediaPlayer.getCurrentPosition() >= ms.mediaPlayer.getDuration()) {  // 播放结束
+                    seekBar.setMax(get_from_binder(2).readInt());
+                    seekBar.setProgress(get_from_binder(3).readInt());
+                    current.setText(time.format(get_from_binder(3).readInt()));
+                    end.setText(time.format(get_from_binder(2).readInt()));
+                    if(get_from_binder(3).readInt() >= get_from_binder(2).readInt()) {  // 播放结束
                         seekBar.setProgress(0);
                         animator.end();
                         ImageButton ib = findViewById(R.id.play);
@@ -153,13 +169,86 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
+
+            @Override
+            public void onCompleted() {
+//                Log.d(tag, "Completed!");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+//                Log.d(tag, "Error!");
+            }
         };
-        mHandler.post(mRunnable);
+        observable = Observable.create(new Observable.OnSubscribe<String>() {
+            @Override
+            public void call(final Subscriber<? super String> subscriber) {
+                while(true) {
+                    try{
+                        Thread.sleep(500);
+                        subscriber.onNext("looping");
+                    } catch(InterruptedException e) {
+
+                    }
+                }
+            }
+        });
+        observable.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(subscriber);
+
+//        mHandler = new Handler();
+//        mRunnable = new Runnable() {
+//            @Override
+//            public void run() {
+//                mHandler.postDelayed(mRunnable, 1000);
+//                if (ms != null) {
+//                    if(!update && !ms.path.equals("")) {
+//                        if(ms.mediaPlayer.isPlaying() && !update) {
+//                            animator.start();
+//                            start = true;
+//                            has_started = true;
+//                            ImageButton ib = findViewById(R.id.play);
+//                            ib.setBackgroundResource(R.drawable.pause);
+//                        }
+//                        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+//                        mmr.setDataSource(ms.path);
+//                        String title =  mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+//                        String author = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+//                        byte[] d = mmr.getEmbeddedPicture();
+//                        Bitmap bitmap = BitmapFactory.decodeByteArray(d, 0, d.length);
+//                        TextView title_text = findViewById(R.id.title);
+//                        TextView author_text = findViewById(R.id.author);
+//                        CircleImageView music_img = findViewById(R.id.musicImg);
+//                        title_text.setText(title);
+//                        author_text.setText(author);
+//                        music_img.setImageBitmap(bitmap);
+//                        update = true;
+//                    }
+//                    seekBar.setMax(ms.mediaPlayer.getDuration());
+//                    seekBar.setProgress(ms.mediaPlayer.getCurrentPosition());
+//                    current.setText(time.format(ms.mediaPlayer.getCurrentPosition()));
+//                    end.setText(time.format(ms.mediaPlayer.getDuration()));
+//                    if(ms.mediaPlayer.getCurrentPosition() >= ms.mediaPlayer.getDuration()) {  // 播放结束
+//                        seekBar.setProgress(0);
+//                        animator.end();
+//                        ImageButton ib = findViewById(R.id.play);
+//                        ib.setBackgroundResource(R.drawable.play);
+//                        current.setText("00:00");
+//                        start = false;
+//                        has_started = false;
+//                    }
+//                }
+//            }
+//        };
+//        mHandler.post(mRunnable);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    ms.mediaPlayer.seekTo(seekBar.getProgress());  // 如果没有fromUser判断，则会不断执行，造成卡顿
+                    Parcel data = Parcel.obtain();
+                    data.writeInt(seekBar.getProgress());    // 如果没有fromUser判断，则会不断执行，造成卡顿
+                    set_by_binder(4, data);
                 }
             }
 
@@ -174,9 +263,31 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public Parcel get_from_binder(int code) {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            binder.transact(code, data, reply, 0);
+        } catch (RemoteException e) {
+
+        }
+        return reply;
+    }
+
+    public void set_by_binder(int code, Parcel data) {
+        Parcel reply = Parcel.obtain();
+        try {
+            binder.transact(code, data, reply, 0);
+        } catch (RemoteException e) {
+
+        }
+    }
+
     public void stop(View view) {    // 结束播放
         ImageButton ib = findViewById(R.id.play);
-        ms.stop();
+        Parcel data = Parcel.obtain();
+        set_by_binder(7, data);
+
         SeekBar seekBar = findViewById(R.id.progress);
         seekBar.setProgress(0);
         TextView current = findViewById(R.id.start);
@@ -188,7 +299,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void start(View view) {   // 开始，暂停
-        ms.start();  // 由Service进行判断当前是否在播放
+        Parcel data = Parcel.obtain();
+        set_by_binder(5, data);  // 由Service进行判断当前是否在播放
         ImageButton ib = findViewById(R.id.play);
         if (!start) {
             start = true;
@@ -206,7 +318,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void back(View view) {   // 退出
-        mHandler.removeCallbacks(mRunnable);
+//        mHandler.removeCallbacks(mRunnable);
         unbindService(sc);
         try {
             MainActivity.this.finish();
@@ -252,9 +364,10 @@ public class MainActivity extends AppCompatActivity {
             title_text.setText(title);
             author_text.setText(author);
             music_img.setImageBitmap(bitmap);
-            ms.change_source(path);
+            Parcel da = Parcel.obtain();
+            da.writeString(path);
+            set_by_binder(6, da);
             has_started = false;
-            ms.path = path;
         }
     }
 
